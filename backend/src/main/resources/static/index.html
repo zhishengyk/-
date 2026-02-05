@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基于线段树的大数据日志统计系统</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap");
+
+    :root {
+      --bg: #f5f1ea;
+      --surface: #fffdf9;
+      --ink: #1b1b1b;
+      --muted: #6d655d;
+      --accent: #0b6b5f;
+      --accent-2: #cf5a2b;
+      --accent-3: #2e5aac;
+      --border: #e8dfd3;
+      --shadow: 0 16px 32px rgba(19, 18, 17, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(255, 221, 195, 0.65), transparent 45%),
+        radial-gradient(circle at 85% 10%, rgba(188, 232, 223, 0.55), transparent 50%),
+        radial-gradient(circle at 70% 85%, rgba(210, 218, 255, 0.45), transparent 45%),
+        repeating-linear-gradient(135deg, rgba(0,0,0,0.03) 0 1px, transparent 1px 12px);
+      z-index: -1;
+    }
+
+    .hero {
+      padding: 36px 30px 26px;
+      background: linear-gradient(120deg, #0b6b5f 0%, #11404c 45%, #1b1f26 100%);
+      color: #f6f2ea;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -120px;
+      top: -120px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(255, 200, 150, 0.6), transparent 65%);
+      filter: blur(2px);
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: 0.6px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+    }
+
+    .hero .meta {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #f6f2ea;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: -24px auto 40px;
+      padding: 0 22px 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      animation: rise 0.6s ease var(--delay, 0s) both;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel .sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    input, button {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 9px 12px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: rgba(11, 107, 95, 0.5);
+      box-shadow: 0 0 0 3px rgba(11, 107, 95, 0.12);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .row > * { flex: 1; }
+
+    .btn {
+      cursor: pointer;
+      font-weight: 600;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn.secondary {
+      background: var(--accent-2);
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border: 1px dashed var(--accent);
+      color: var(--accent);
+    }
+
+    .range {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 12px;
+    }
+
+    .range .row {
+      align-items: center;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      border-radius: 12px;
+      padding: 12px;
+      background: #f8f4ef;
+      border: 1px solid var(--border);
+    }
+
+    .stat .value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .chart {
+      width: 100%;
+      height: 260px;
+      margin-top: 10px;
+    }
+
+    .span-2 {
+      grid-column: 1 / -1;
+    }
+
+    pre {
+      background: #f6f2ec;
+      padding: 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #4b433a;
+      max-height: 200px;
+      overflow: auto;
+      border: 1px solid var(--border);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero { padding: 30px 20px 24px; }
+      .shell { padding: 0 16px 30px; margin-top: -18px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>基于线段树的大数据日志统计系统</h1>
+    <p>单机演示 · 统计可视化 · 快照回滚 · 权限审计 · 规则报警</p>
+    <div class="meta">
+      <span class="chip">DEV 环境</span>
+      <span id="tokenBadge" class="chip">未登录</span>
+      <span class="chip">端口 18081</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="grid">
+      <section class="panel range" style="--delay: .05s">
+        <h3>查询范围 <span class="sub">时间格式：yyyy-MM-dd HH:mm:ss</span></h3>
+        <div class="row">
+          <div>
+            <label>开始时间</label>
+            <input id="start" value="2025-01-01 00:00:00">
+          </div>
+          <div>
+            <label>结束时间</label>
+            <input id="end" value="2025-01-02 00:00:00">
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" onclick="loadAll()">刷新统计</button>
+          <button class="btn secondary" onclick="loadCompare()">对比分析</button>
+        </div>
+      </section>
+
+      <section class="panel" style="--delay: .1s">
+        <h3>登录与会话</h3>
+        <div class="row">
+          <div>
+            <label>用户名</label>
+            <input id="username" value="admin">
+          </div>
+          <div>
+            <label>密码</label>
+            <input id="password" type="password" value="admin123">
+          </div>
+        </div>
+        <div class="row" style="margin-top: 8px;">
+          <button class="btn" onclick="login()">登录</button>
+          <button class="btn ghost" onclick="logout()">退出</button>
+        </div>
+        <pre id="loginResult"></pre>
+        <div class="hint" id="loginHint"></div>
+      </section>
+
+      <section class="panel" style="--delay: .12s">
+        <h3>汇总统计</h3>
+        <div class="stats">
+          <div class="stat">
+            <div class="sub">总日志量</div>
+            <div id="totalCount" class="value">-</div>
+          </div>
+          <div class="stat">
+            <div class="sub">平均响应(ms)</div>
+            <div id="avgResponse" class="value">-</div>
+          </div>
+          <div class="stat">
+            <div class="sub">最小响应(ms)</div>
+            <div id="minResponse" class="value">-</div>
+          </div>
+          <div class="stat">
+            <div class="sub">最大响应(ms)</div>
+            <div id="maxResponse" class="value">-</div>
+          </div>
+        </div>
+        <div id="levelChart" class="chart"></div>
+        <div id="statusChart" class="chart"></div>
+      </section>
+
+      <section class="panel" style="--delay: .15s">
+        <h3>日志上传</h3>
+        <input type="file" id="logFile">
+        <div class="row" style="margin-top: 8px;">
+          <button class="btn" onclick="uploadLog()">上传日志</button>
+          <button class="btn ghost" onclick="loadSample()">填入示例时间</button>
+        </div>
+        <pre id="uploadResult"></pre>
+        <div class="hint">支持 JSON 行或纯文本格式</div>
+      </section>
+
+      <section class="panel" style="--delay: .18s">
+        <h3>错误趋势</h3>
+        <div class="row">
+          <div>
+            <label>状态码</label>
+            <input id="errorCode" value="500">
+          </div>
+          <div>
+            <label>时间桶(分钟)</label>
+            <input id="bucketMinutes" value="60">
+          </div>
+        </div>
+        <button class="btn" style="margin-top: 8px;" onclick="loadErrorTrend()">查看趋势</button>
+        <div id="trendChart" class="chart"></div>
+      </section>
+
+      <section class="panel span-2" style="--delay: .2s">
+        <h3>区间对比</h3>
+        <div class="row">
+          <div>
+            <label>区间 A 开始</label>
+            <input id="start1" value="2025-01-01 00:00:00">
+          </div>
+          <div>
+            <label>区间 A 结束</label>
+            <input id="end1" value="2025-01-02 00:00:00">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>区间 B 开始</label>
+            <input id="start2" value="2025-01-03 00:00:00">
+          </div>
+          <div>
+            <label>区间 B 结束</label>
+            <input id="end2" value="2025-01-04 00:00:00">
+          </div>
+        </div>
+        <div id="compareChart" class="chart"></div>
+      </section>
+
+      <section class="panel span-2" style="--delay: .22s">
+        <h3>运行日志</h3>
+        <pre id="debugLog"></pre>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    const apiBase = "";
+    const tokenBadge = document.getElementById("tokenBadge");
+    const debugLog = document.getElementById("debugLog");
+    const charts = {};
+
+    const palette = {
+      accent: "#0b6b5f",
+      accent2: "#cf5a2b",
+      accent3: "#2e5aac"
+    };
+
+    function getToken() { return localStorage.getItem("token"); }
+    function setToken(t) { localStorage.setItem("token", t); }
+
+    function log(message) {
+      const time = new Date().toLocaleTimeString();
+      debugLog.textContent = `[${time}] ${message}\n` + debugLog.textContent;
+    }
+
+    function updateTokenBadge() {
+      const token = getToken();
+      tokenBadge.textContent = token ? "已登录" : "未登录";
+    }
+
+    function ensureCharts() {
+      if (!window.echarts) {
+        log("ECharts 未加载，请检查网络");
+        return false;
+      }
+      if (!charts.level) {
+        charts.level = echarts.init(document.getElementById("levelChart"));
+        charts.status = echarts.init(document.getElementById("statusChart"));
+        charts.trend = echarts.init(document.getElementById("trendChart"));
+        charts.compare = echarts.init(document.getElementById("compareChart"));
+        window.addEventListener("resize", () => {
+          charts.level.resize();
+          charts.status.resize();
+          charts.trend.resize();
+          charts.compare.resize();
+        });
+      }
+      return true;
+    }
+
+    async function api(path, options = {}) {
+      const headers = options.headers || {};
+      const token = getToken();
+      if (token) headers["Authorization"] = "Bearer " + token;
+      options.headers = headers;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      options.signal = controller.signal;
+      let res;
+      try {
+        res = await fetch(apiBase + path, options);
+      } catch (err) {
+        clearTimeout(timeout);
+        log("请求失败：无法连接后端或已超时");
+        throw err;
+      }
+      clearTimeout(timeout);
+      const data = await res.json().catch(() => ({ success: false, message: "响应解析失败" }));
+      if (!data.success) {
+        log(data.message || "请求失败");
+      }
+      return data;
+    }
+
+    async function login() {
+      const loginHint = document.getElementById("loginHint");
+      loginHint.textContent = "";
+      if (location.protocol === "file:") {
+        loginHint.textContent = "请通过 http://localhost:18081 访问，而不是直接打开文件。";
+        return;
+      }
+      try {
+        const res = await fetch(apiBase + "/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.value, password: password.value })
+        });
+        const data = await res.json();
+        if (data.success) setToken(data.data.token);
+        loginResult.textContent = JSON.stringify(data, null, 2);
+        updateTokenBadge();
+      } catch (err) {
+        loginResult.textContent = "登录失败：无法连接后端";
+        log("登录失败：请确认服务已启动并访问 http://localhost:18081");
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      updateTokenBadge();
+      log("已退出登录");
+    }
+
+    async function uploadLog() {
+      const file = logFile.files[0];
+      if (!file) return;
+      const form = new FormData();
+      form.append("file", file);
+      const data = await api("/api/logs/upload", { method: "POST", body: form });
+      uploadResult.textContent = JSON.stringify(data, null, 2);
+      if (data.success) {
+        log("日志上传成功");
+        loadAll();
+      }
+    }
+
+    function loadSample() {
+      start.value = "2025-01-01 00:00:00";
+      end.value = "2025-01-02 00:00:00";
+      start1.value = "2025-01-01 00:00:00";
+      end1.value = "2025-01-02 00:00:00";
+      start2.value = "2025-01-03 00:00:00";
+      end2.value = "2025-01-04 00:00:00";
+      log("已填入示例时间");
+    }
+
+    async function loadSummary() {
+      if (!ensureCharts()) return;
+      const data = await api(`/api/stats/summary?start=${encodeURIComponent(start.value)}&end=${encodeURIComponent(end.value)}`);
+      if (!data.success) return;
+      const stats = data.data;
+      totalCount.textContent = stats.totalCount || 0;
+
+      const levels = Object.keys(stats.levelCounts || {});
+      const levelValues = levels.map(k => stats.levelCounts[k]);
+      charts.level.setOption({
+        title: { text: "日志级别分布", left: "center", textStyle: { fontSize: 12 } },
+        xAxis: { type: "category", data: levels },
+        yAxis: { type: "value" },
+        series: [{ type: "bar", data: levelValues, itemStyle: { color: palette.accent } }]
+      });
+
+      const status = Object.keys(stats.statusCounts || {});
+      const statusValues = status.map(k => ({ value: stats.statusCounts[k], name: k }));
+      charts.status.setOption({
+        title: { text: "状态码分布", left: "center", textStyle: { fontSize: 12 } },
+        tooltip: { trigger: "item" },
+        series: [{ type: "pie", radius: ["30%", "60%"], data: statusValues }]
+      });
+    }
+
+    async function loadPerformance() {
+      const data = await api(`/api/stats/performance?start=${encodeURIComponent(start.value)}&end=${encodeURIComponent(end.value)}`);
+      if (!data.success) return;
+      const perf = data.data;
+      avgResponse.textContent = perf.avgMs.toFixed(2);
+      minResponse.textContent = perf.minMs;
+      maxResponse.textContent = perf.maxMs;
+    }
+
+    async function loadErrorTrend() {
+      if (!ensureCharts()) return;
+      const code = errorCode.value || 500;
+      const bucket = bucketMinutes.value || 60;
+      const data = await api(`/api/stats/error-trend?start=${encodeURIComponent(start.value)}&end=${encodeURIComponent(end.value)}&statusCode=${code}&bucketMinutes=${bucket}`);
+      if (!data.success) return;
+      const points = data.data || [];
+      charts.trend.setOption({
+        title: { text: "错误码趋势", left: "center", textStyle: { fontSize: 12 } },
+        xAxis: { type: "category", data: points.map(p => p.bucket) },
+        yAxis: { type: "value" },
+        series: [{ type: "line", data: points.map(p => p.count), smooth: true, itemStyle: { color: palette.accent2 } }]
+      });
+    }
+
+    async function loadCompare() {
+      if (!ensureCharts()) return;
+      const data = await api(`/api/stats/compare?start1=${encodeURIComponent(start1.value)}&end1=${encodeURIComponent(end1.value)}&start2=${encodeURIComponent(start2.value)}&end2=${encodeURIComponent(end2.value)}`);
+      if (!data.success) return;
+      const compare = data.data;
+      const statusKeys = Object.keys(compare.statusDiff || {});
+      const statusVals = statusKeys.map(k => compare.statusDiff[k]);
+      charts.compare.setOption({
+        title: { text: "区间对比（状态码差值）", left: "center", textStyle: { fontSize: 12 } },
+        xAxis: { type: "category", data: statusKeys },
+        yAxis: { type: "value" },
+        series: [{ type: "bar", data: statusVals, itemStyle: { color: palette.accent3 } }]
+      });
+    }
+
+    async function loadAll() {
+      await loadSummary();
+      await loadPerformance();
+      await loadErrorTrend();
+    }
+
+    updateTokenBadge();
+    ensureCharts();
+    log("前端脚本已加载");
+  </script>
+</body>
+</html>

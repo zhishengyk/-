@@ -1,0 +1,17 @@
+# Build artifacts
+**/target/
+**/out/
+
+# Logs & runtime data
+**/*.log
+**/logs/
+**/data/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
