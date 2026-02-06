@@ -388,6 +388,7 @@
         <div>
           <h1>基于线段树的大数据日志统计系统</h1>
           <p>单机演示 · 统计可视化 · 快照回滚 · 权限审计 · 规则告警</p>
+          <div id="statusLine" class="hint">准备就绪</div>
         </div>
         <div class="top-actions">
           <button class="btn ghost" onclick="loadSample()">填入示例时间</button>
@@ -528,11 +529,12 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="/vendor/echarts.min.js"></script>
   <script>
     const apiBase = "";
     const tokenBadge = document.getElementById("tokenBadge");
     const debugLog = document.getElementById("debugLog");
+    const statusLine = document.getElementById("statusLine");
     const charts = {};
 
     const palette = {
@@ -547,6 +549,7 @@
     function log(message) {
       const time = new Date().toLocaleTimeString();
       debugLog.textContent = `[${time}] ${message}\n` + debugLog.textContent;
+      if (statusLine) statusLine.textContent = message;
     }
 
     function updateTokenBadge() {
@@ -715,9 +718,21 @@
     }
 
     async function loadAll() {
+      log("??????");
       await loadSummary();
       await loadPerformance();
       await loadErrorTrend();
+      log("??????");
+    }
+
+    function resizeChartsForView(target) {
+      if (!ensureCharts()) return;
+      const map = {
+        dashboard: [charts.level, charts.status],
+        trend: [charts.trend],
+        compare: [charts.compare]
+      };
+      (map[target] || []).forEach(chart => chart && chart.resize());
     }
 
     function setupMenu() {
@@ -728,6 +743,9 @@
           const target = item.dataset.view;
           views.forEach(view => view.classList.toggle("active", view.dataset.view === target));
           menuItems.forEach(btn => btn.classList.toggle("active", btn === item));
+          setTimeout(() => resizeChartsForView(target), 60);
+          const label = item.querySelector("span");
+          if (label) log(`已切换到 ${label.textContent}`);
         });
       });
     }
