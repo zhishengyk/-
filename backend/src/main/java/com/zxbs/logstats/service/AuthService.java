@@ -31,11 +31,13 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
+
         String token = jwtService.generateToken(user.getUsername(), user.getRole().name());
         try {
             auditService.record(user.getId(), user.getUsername(), "LOGIN", "用户登录");
         } catch (Exception ignored) {
         }
+
         return new AuthResponse(token, user.getUsername(), user.getRole().name());
     }
 }

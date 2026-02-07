@@ -6,6 +6,7 @@ import com.zxbs.logstats.dto.PerformanceResponse;
 import com.zxbs.logstats.model.NodeStats;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,10 +31,25 @@ public class StatsService {
     }
 
     public List<ErrorTrendPoint> errorTrend(LocalDateTime start, LocalDateTime end, int statusCode, int bucketMinutes) {
+        if (bucketMinutes <= 0) {
+            throw new IllegalArgumentException("bucketMinutes 必须大于 0");
+        }
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("结束时间不能早于开始时间");
+        }
+        long rangeMinutes = Duration.between(start, end).toMinutes();
+        long pointCount = rangeMinutes / bucketMinutes + 1;
+        if (pointCount > 10000) {
+            throw new IllegalArgumentException("时间范围过大，请缩小范围或增大 bucketMinutes");
+        }
+
         List<ErrorTrendPoint> points = new ArrayList<>();
         LocalDateTime cursor = start;
         while (!cursor.isAfter(end)) {
             LocalDateTime bucketEnd = cursor.plusMinutes(bucketMinutes).minusSeconds(1);
+            if (bucketEnd.isAfter(end)) {
+                bucketEnd = end;
+            }
             NodeStats stats = segmentTreeService.query(cursor, bucketEnd);
             long count = stats.getStatusCounts().getOrDefault(statusCode, 0L);
             points.add(new ErrorTrendPoint(segmentTreeService.formatBucket(cursor), count));

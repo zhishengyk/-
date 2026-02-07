@@ -28,6 +28,7 @@ public class UserService {
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new IllegalArgumentException("用户名已存在");
         }
+
         User user = new User();
         user.setUsername(req.getUsername());
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
@@ -37,7 +38,13 @@ public class UserService {
     }
 
     public User update(Long id, UserRequest req) {
-        User user = userRepository.findById(id).orElseThrow();
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+
+        if (userRepository.existsByUsernameAndIdNot(req.getUsername(), id)) {
+            throw new IllegalArgumentException("用户名已存在");
+        }
+
         user.setUsername(req.getUsername());
         if (req.getPassword() != null && !req.getPassword().isEmpty()) {
             user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
