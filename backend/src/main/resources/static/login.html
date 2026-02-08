@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogStats 登录</title>
+  <link rel="stylesheet" href="/assets/login.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <main class="login-shell">
+    <section class="login-card">
+      <p class="eyebrow">Access Gateway</p>
+      <h1>欢迎使用 LogStats</h1>
+      <p class="subtitle">登录校验通过后才可进入主页面。</p>
+
+      <form id="loginForm" class="login-form">
+        <label class="field">
+          <span>用户名</span>
+          <input id="username" value="admin" autocomplete="username">
+        </label>
+        <label class="field">
+          <span>密码</span>
+          <input id="password" type="password" value="admin123" autocomplete="current-password">
+        </label>
+        <button id="loginBtn" class="btn" type="submit">登录并进入主页面</button>
+      </form>
+
+      <p id="loginHint" class="hint"></p>
+      <details class="raw">
+        <summary>查看原始响应（调试）</summary>
+        <pre id="loginResult">尚未请求</pre>
+      </details>
+    </section>
+  </main>
+
+  <script src="/assets/login.js"></script>
+</body>
+</html>

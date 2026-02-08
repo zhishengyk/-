@@ -3,6 +3,7 @@
 
   const state = {
     tokenKey: "token",
+    loginPath: "/login.html",
     apiBase: "",
     charts: {},
     chartReady: false
@@ -57,6 +58,17 @@
       return;
     }
     localStorage.setItem(state.tokenKey, token);
+  }
+
+  function setAppLocked(locked) {
+    document.body.classList.toggle("app-locked", locked);
+  }
+
+  function redirectToLogin() {
+    if (window.location.pathname !== state.loginPath) {
+      const next = encodeURIComponent(window.location.pathname || "/index.html");
+      window.location.replace(`${state.loginPath}?next=${next}`);
+    }
   }
 
   function shortenToken(token) {
@@ -232,6 +244,10 @@
       }
 
       const ok = Boolean(response.ok && payload && payload.success);
+      if (response.status === 401 && path !== "/api/auth/login") {
+        setToken("");
+        redirectToLogin();
+      }
       if (!ok) {
         const msg = payload?.message || `请求失败 ${response.status}`;
         log(`${path} -> ${msg}`, "error");
@@ -329,44 +345,6 @@
     };
   }
 
-  async function login() {
-    setAuthHint("");
-
-    if (location.protocol === "file:") {
-      setAuthHint("请通过 http://localhost:18081 访问，不要直接打开本地文件。", true);
-      return;
-    }
-
-    const username = $("username").value;
-    const password = $("password").value;
-
-    const { ok, payload } = await request("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
-    });
-
-    renderAuthRaw(payload);
-
-    if (ok && payload.data?.token) {
-      setToken(payload.data.token);
-      updateTokenBadge();
-      setSessionInfo("已登录", payload.data.username || "-", payload.data.role || "-", payload.data.token);
-      setAuthHint("登录成功，会话已更新。", false);
-      if (nodes.authRawToggle) {
-        nodes.authRawToggle.open = false;
-      }
-      log(`登录成功: ${payload.data.username}`);
-      await loadAll();
-      return;
-    }
-
-    setAuthHint(payload?.message || "登录失败", true);
-    if (nodes.authRawToggle) {
-      nodes.authRawToggle.open = true;
-    }
-  }
-
   async function whoami() {
     const { ok, payload } = await request("/api/auth/me");
     renderAuthRaw(payload);
@@ -426,6 +404,34 @@
       nodes.authRawToggle.open = false;
     }
     log("已退出登录");
+    redirectToLogin();
+  }
+
+  async function ensureSession() {
+    const token = getToken();
+    if (!token) {
+      redirectToLogin();
+      return false;
+    }
+
+    const { ok, payload } = await request("/api/auth/me");
+    renderAuthRaw(payload || { success: false, message: "会话校验失败", data: null });
+
+    if (!ok || !payload?.data) {
+      setToken("");
+      updateTokenBadge();
+      setSessionInfo("未登录", "-", "-", "");
+      redirectToLogin();
+      return false;
+    }
+
+    const role = payload.data.role || roleFromAuthorities(payload.data.authorities);
+    setSessionInfo("已登录", payload.data.username || "-", role || "-", token);
+    setAuthHint("会话有效，可正常访问主页面。", false);
+    if (nodes.authRawToggle) {
+      nodes.authRawToggle.open = false;
+    }
+    return true;
   }
 
   async function uploadLogs() {
@@ -675,26 +681,43 @@
   }
 
   function bindActions() {
-    $("fillDemoBtn").addEventListener("click", fillDemoDate);
-    $("refreshBtn").addEventListener("click", loadAll);
-    $("runOverviewBtn").addEventListener("click", loadAll);
-    $("runCompareShortcutBtn").addEventListener("click", loadCompare);
+    const fillDemoBtn = $("fillDemoBtn");
+    const refreshBtn = $("refreshBtn");
+    const runOverviewBtn = $("runOverviewBtn");
+    const runCompareShortcutBtn = $("runCompareShortcutBtn");
+    const logoutBtn = $("logoutBtn");
+    const whoamiBtn = $("whoamiBtn");
+    const uploadBtn = $("uploadBtn");
+    const fillDemoIngestBtn = $("fillDemoIngestBtn");
+    const trendBtn = $("trendBtn");
+    const compareBtn = $("compareBtn");
 
-    $("loginBtn").addEventListener("click", login);
-    $("logoutBtn").addEventListener("click", logout);
-    $("whoamiBtn").addEventListener("click", whoami);
+    fillDemoBtn?.addEventListener("click", fillDemoDate);
+    refreshBtn?.addEventListener("click", loadAll);
+    runOverviewBtn?.addEventListener("click", loadAll);
+    runCompareShortcutBtn?.addEventListener("click", loadCompare);
+
+    logoutBtn?.addEventListener("click", logout);
+    whoamiBtn?.addEventListener("click", whoami);
     if (nodes.copyTokenBtn) {
       nodes.copyTokenBtn.addEventListener("click", copyToken);
     }
 
-    $("uploadBtn").addEventListener("click", uploadLogs);
-    $("fillDemoIngestBtn").addEventListener("click", fillDemoDate);
+    uploadBtn?.addEventListener("click", uploadLogs);
+    fillDemoIngestBtn?.addEventListener("click", fillDemoDate);
 
-    $("trendBtn").addEventListener("click", loadTrend);
-    $("compareBtn").addEventListener("click", loadCompare);
+    trendBtn?.addEventListener("click", loadTrend);
+    compareBtn?.addEventListener("click", loadCompare);
   }
 
-  function init() {
+  async function init() {
+    setAppLocked(true);
+
+    if (!(await ensureSession())) {
+      return;
+    }
+
+    setAppLocked(false);
     bindMenu();
     bindActions();
     fillDemoDate();
@@ -708,6 +731,7 @@
     if (nodes.uploadRawToggle) {
       nodes.uploadRawToggle.open = false;
     }
+    await loadAll();
     log("前端已初始化");
   }
 

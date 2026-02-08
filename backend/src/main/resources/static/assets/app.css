@@ -32,6 +32,10 @@ body {
   min-height: 100vh;
 }
 
+body.app-locked .shell {
+  display: none;
+}
+
 .noise {
   position: fixed;
   inset: 0;
@@ -451,6 +455,10 @@ pre {
   display: grid;
   grid-template-columns: 1.15fr .95fr;
   gap: 12px;
+}
+
+.auth-grid-single {
+  grid-template-columns: 1fr;
 }
 
 .auth-pane {

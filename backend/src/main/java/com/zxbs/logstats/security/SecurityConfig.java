@@ -30,7 +30,7 @@ public class SecurityConfig {
             .anonymous(anon -> anon.disable())
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
+                    .requestMatchers("/", "/index.html", "/login.html", "/favicon.ico").permitAll()
                     .requestMatchers("/vendor/**", "/assets/**").permitAll()
                     .requestMatchers("/h2-console/**").permitAll()
                     .requestMatchers("/api/auth/login").permitAll()

@@ -6,7 +6,7 @@
   <title>LogStats 控制台</title>
   <link rel="stylesheet" href="/assets/app.css">
 </head>
-<body>
+<body class="app-locked">
   <div class="noise" aria-hidden="true"></div>
 
   <div class="shell">
@@ -26,7 +26,7 @@
         </button>
         <button class="menu-item" data-view="auth">
           <strong>认证会话</strong>
-          <span>登录与用户</span>
+          <span>用户与令牌</span>
         </button>
         <button class="menu-item" data-view="ingest">
           <strong>日志导入</strong>
@@ -122,34 +122,11 @@
 
       <section class="view" data-view="auth">
         <article class="card auth-shell reveal">
-          <div class="auth-grid">
-            <section class="auth-pane auth-pane-primary">
-              <div class="auth-header">
-                <h3>账号登录</h3>
-                <span>Demo：admin / admin123</span>
-              </div>
-              <div class="field-grid two compact">
-                <label class="field">
-                  <span>用户名</span>
-                  <input id="username" value="admin">
-                </label>
-                <label class="field">
-                  <span>密码</span>
-                  <input id="password" type="password" value="admin123">
-                </label>
-              </div>
-              <div class="inline-actions auth-actions">
-                <button id="loginBtn" class="btn solid">登录</button>
-                <button id="logoutBtn" class="btn ghost">退出</button>
-                <button id="whoamiBtn" class="btn warm">查询当前用户</button>
-              </div>
-              <p id="loginHint" class="tip auth-tip"></p>
-            </section>
-
+          <div class="auth-grid auth-grid-single">
             <section class="auth-pane auth-pane-status">
               <div class="auth-header">
                 <h3>会话状态</h3>
-                <button id="copyTokenBtn" class="btn ghost small">复制 Token</button>
+                <span>登录入口已独立为 /login.html</span>
               </div>
               <div class="session-metrics">
                 <div class="session-item">
@@ -169,6 +146,12 @@
                 <span>Token 预览</span>
                 <code id="tokenPreview">-</code>
               </div>
+              <div class="inline-actions auth-actions">
+                <button id="whoamiBtn" class="btn warm">刷新当前用户</button>
+                <button id="copyTokenBtn" class="btn ghost small">复制 Token</button>
+                <button id="logoutBtn" class="btn ghost">退出登录</button>
+              </div>
+              <p id="loginHint" class="tip auth-tip"></p>
             </section>
           </div>
 
